@@ -3,6 +3,7 @@ import { CharityCategory, type ObjectId } from "./Types.js";
 
 
 export interface ICharityEvent {
+  _id?: Schema.Types.ObjectId;
   title: string;
   description?: string;
   eventDate: Date;
@@ -85,5 +86,4 @@ CharitySchema.index({ isActive: 1, isFeatured: 1 });
 CharitySchema.index({ category: 1, isActive: 1 });
 CharitySchema.index({ name: "text", description: "text", tags: "text" });
 
-const Charity = mongoose.model<ICharity>("Charity", CharitySchema);
-export default Charity;
+export const Charity = mongoose.model<ICharity>("Charity", CharitySchema);

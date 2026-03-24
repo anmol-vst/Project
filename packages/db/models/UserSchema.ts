@@ -10,6 +10,7 @@ import {
 
 // Interfaces 
 export interface IScore {
+  _id?: Schema.Types.ObjectId;
   points: number;
   datePlayed: Date;
   addedAt: Date;
@@ -128,5 +129,4 @@ UserSchema.index({ "subscription.status": 1 });
 UserSchema.index({ "subscription.stripeCustomerId": 1 });
 
 
-const User = mongoose.model<IUser>("User", UserSchema);
-export default User;
+export const User = mongoose.model<IUser>("User", UserSchema);
