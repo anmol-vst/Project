@@ -21,32 +21,42 @@ export function HomePage() {
   return (
     <div className="container">
       <section className="hero hero-golf">
-        <p className="hero-eyebrow">Golf subscription - purpose over par</p>
-        <h1>Play with purpose. Compete monthly. Lift communities.</h1>
-        <p className="hero-lead">
-          Stableford scorekeeping, monthly draw excitement, and transparent charity impact in one
-          modern experience.
-        </p>
-        <div className="row hero-actions">
-          <Link className="btn btn-primary" to="/signup">Join the tee sheet</Link>
-          <Link className="btn btn-secondary" to="/pricing">See membership</Link>
-          <Link className="btn ghost btn-outline" to="/charities">Browse charities</Link>
+        <div className="hero-content">
+          <p className="hero-eyebrow">Golf subscription - purpose over par</p>
+          <h1>Play with purpose. Compete monthly. Lift communities.</h1>
+          <p className="hero-lead">
+            Stableford scorekeeping, monthly draw excitement, and transparent charity impact in one
+            modern experience.
+          </p>
+          <div className="row hero-actions">
+            <Link className="btn btn-primary" to="/signup">Join the tee sheet</Link>
+            <Link className="btn btn-secondary" to="/pricing">See membership</Link>
+            <Link className="btn ghost btn-outline" to="/charities">Browse charities</Link>
+          </div>
         </div>
+        <img
+          src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&h=400&fit=crop"
+          alt="Golf at sunset"
+          className="hero-img"
+        />
       </section>
       <section className="home-features">
         <article className="feature-card feature-card--scores">
+          <img src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=200&fit=crop" alt="Golf score" className="card-img" />
           <span className="feature-kicker">01 · Score journey</span>
           <h3>Your latest five rounds, always current</h3>
           <p>Record Stableford scores (1-45) with date played. Oldest score rotates out automatically after five.</p>
           <Link className="feature-link" to={scoreTarget}>{user ? "Open score log" : "Start scoring"}</Link>
         </article>
         <article className="feature-card feature-card--draw">
+          <img src="https://images.unsplash.com/photo-1592919505780-303950717480?w=400&h=200&fit=crop" alt="Prize draw" className="card-img" />
           <span className="feature-kicker">02 · Monthly draw</span>
           <h3>Prize tiers with jackpot rollover</h3>
           <p>Monthly draw workflows support random/algorithmic logic and rollover when no top-tier winner appears.</p>
           <Link className="feature-link" to={drawTarget}>{user ? "Go to dashboard" : "Unlock draws with membership"}</Link>
         </article>
         <article className="feature-card feature-card--charity">
+          <img src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400&h=200&fit=crop" alt="Charity giving" className="card-img" />
           <span className="feature-kicker">03 · Charity-first impact</span>
           <h3>Giving built into the plan</h3>
           <p>Select a partner charity and route at least 10% of your subscription to social impact.</p>
@@ -269,69 +279,33 @@ export function CharityProfilePage() {
 
 export function PricingPage() {
   const { user } = useAuth();
-  const [charities, setCharities] = useState<Charity[]>([]);
   const [charityId, setCharityId] = useState("");
-  const [contributionPercent, setContributionPercent] = useState(10);
   const [cancelMessage, setCancelMessage] = useState("");
   const [error, setError] = useState("");
-  const [loadingCharities, setLoadingCharities] = useState(true);
-  const [pricesLoading, setPricesLoading] = useState(true);
-  const [pricesError, setPricesError] = useState("");
-  const [pricePayload, setPricePayload] = useState<Awaited<ReturnType<typeof subscriptionService.getPublicPrices>> | null>(null);
   const [processingPlan, setProcessingPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    setLoadingCharities(true);
     charityService
       .list({ page: 1, limit: 30 })
       .then((res) => {
-        setCharities(res.charities);
         if (res.charities.length > 0) {
           setCharityId(res.charities[0]?._id || "");
         }
       })
-      .catch((err) => {
-        setError((err as Error).message || "Unable to load charities right now.");
-      })
-      .finally(() => setLoadingCharities(false));
+      .catch(() => undefined);
   }, []);
-
-  useEffect(() => {
-    setPricesLoading(true);
-    setPricesError("");
-    subscriptionService
-      .getPublicPrices()
-      .then(setPricePayload)
-      .catch((err) => setPricesError((err as Error).message))
-      .finally(() => setPricesLoading(false));
-  }, []);
-
-  const yearlyVsMonthlyPct =
-    pricePayload?.monthly.amountCents &&
-    pricePayload?.yearly.amountCents &&
-    pricePayload.monthly.interval === "month" &&
-    pricePayload.yearly.interval === "year"
-      ? Math.max(
-          0,
-          Math.round((1 - pricePayload.yearly.amountCents / (12 * pricePayload.monthly.amountCents)) * 100)
-        )
-      : null;
 
   const checkout = async (plan: SubscriptionPlan) => {
     if (!user) return;
-    if (!charityId) {
-      setError("Please select a charity before continuing to payment.");
-      return;
-    }
     setError("");
     setCancelMessage("");
     setProcessingPlan(plan);
     try {
       const res = await subscriptionService.checkout({
         plan,
-        charityId,
-        contributionPercent: Math.max(10, contributionPercent),
+        charityId: charityId || undefined,
+        contributionPercent: 10,
       });
       window.location.href = res.url;
     } catch (err) {
@@ -356,91 +330,59 @@ export function PricingPage() {
   };
 
   return (
-    <div className="container pricing-page">
-      <header className="pricing-header">
-        <p className="hero-eyebrow">Membership</p>
-        <h2>Stripe-backed pricing</h2>
-        <p className="muted pricing-sub">
-          Amounts below come from Stripe Price objects. Charity percentage is donation share, not the subscription amount.
-        </p>
-        {!user && <p className="pricing-note">Login first to continue to Stripe checkout.</p>}
-      </header>
-      {pricePayload?.identicalPriceIds && (
-        <p className="err pricing-banner">
-          `STRIPE_PRICE_MONTHLY` and `STRIPE_PRICE_YEARLY` are set to the same value. Configure two different Stripe prices.
+    <div className="container">
+      <p className="muted" style={{ textTransform: "uppercase", letterSpacing: "2px", fontSize: "0.8rem" }}>Membership</p>
+      <h2 style={{ fontSize: "2.5rem", marginTop: "0.2rem" }}>Stripe-backed pricing</h2>
+      <p className="muted">Choose your plan and start playing, winning, and giving back.</p>
+      {!user && (
+        <p>
+          <Link to="/login">Login</Link> or <Link to="/signup">Sign up</Link> first to subscribe.
         </p>
       )}
-      {pricesLoading && <p className="muted">Loading live prices from Stripe...</p>}
-      {pricesError && <p className="err">{pricesError}</p>}
-      {pricePayload && !pricesLoading && (
-        <div className="pricing-grid">
-          <article className="plan-card">
-            <h3 className="plan-title">Monthly</h3>
-            <p className="plan-price">{pricePayload.monthly.formatted}</p>
-            <p className="muted plan-meta">{pricePayload.monthly.nickname || "Billed every month"}</p>
-            <button
-              className="btn btn-primary plan-cta"
-              disabled={!user || processingPlan !== null || !charityId || loadingCharities || !!pricesError}
-              onClick={() => checkout("monthly")}
-            >
-              {processingPlan === "monthly" ? "Redirecting..." : "Choose monthly"}
-            </button>
-          </article>
-          <article className="plan-card plan-card--featured">
-            <span className="plan-badge">Best value</span>
-            <h3 className="plan-title">Yearly</h3>
-            <p className="plan-price">{pricePayload.yearly.formatted}</p>
-            <p className="muted plan-meta">{pricePayload.yearly.nickname || "Billed once per year"}</p>
-            {yearlyVsMonthlyPct != null && yearlyVsMonthlyPct > 0 ? (
-              <p className="plan-save">About {yearlyVsMonthlyPct}% less than 12x monthly</p>
-            ) : null}
-            <button
-              className="btn btn-secondary plan-cta"
-              disabled={!user || processingPlan !== null || !charityId || loadingCharities || !!pricesError}
-              onClick={() => checkout("yearly")}
-            >
-              {processingPlan === "yearly" ? "Redirecting..." : "Choose yearly"}
-            </button>
-          </article>
-        </div>
-      )}
-      <div className="card form pricing-extras">
-        <select value={charityId} onChange={(e) => setCharityId(e.target.value)}>
-          <option value="">Select charity</option>
-          {charities.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {loadingCharities && <p className="muted">Loading charities...</p>}
-        {!loadingCharities && charities.length === 0 && (
-          <p className="err">No active charities available yet. Ask admin to add one first.</p>
-        )}
-        <input
-          type="number"
-          min={10}
-          max={100}
-          value={contributionPercent}
-          onChange={(e) => setContributionPercent(Number(e.target.value))}
-        />
-        <div className="row">
+
+      <div className="pricing-grid">
+        <article className="card pricing-card">
+          <h3>Monthly</h3>
+          <p className="price">Monthly billing</p>
+          <p className="muted">Billed every month</p>
+          <img
+            src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=200&fit=crop"
+            alt="Golf course"
+            className="pricing-img"
+          />
           <button
-            className="btn"
-            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            className="btn pricing-btn"
+            disabled={!user || processingPlan !== null}
             onClick={() => checkout("monthly")}
           >
-            {processingPlan === "monthly" ? "Redirecting..." : "Monthly"}
+            {processingPlan === "monthly" ? "Redirecting to Stripe..." : "Choose monthly"}
           </button>
+        </article>
+
+        <article className="card pricing-card pricing-featured">
+          <span className="badge">BEST VALUE</span>
+          <h3>Yearly</h3>
+          <p className="price">Annual billing</p>
+          <p className="muted">Billed once per year</p>
+          <p style={{ fontWeight: 700 }}>Save with annual billing</p>
+          <img
+            src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=400&h=200&fit=crop"
+            alt="Golf sunset"
+            className="pricing-img"
+          />
           <button
-            className="btn ghost"
-            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            className="btn ghost pricing-btn"
+            disabled={!user || processingPlan !== null}
             onClick={() => checkout("yearly")}
           >
-            {processingPlan === "yearly" ? "Redirecting..." : "Yearly"}
+            {processingPlan === "yearly" ? "Redirecting to Stripe..." : "Choose yearly"}
           </button>
-        </div>
-        {user?.subscription?.status === "active" && (
+        </article>
+      </div>
+
+      {user?.subscription?.status === "active" && (
+        <div className="card" style={{ marginTop: "1rem" }}>
+          <p className="muted">Manage your subscription</p>
           <div className="row">
             <button className="btn ghost" disabled={cancelling} onClick={() => cancelSubscription("period_end")}>
               Cancel at period end
@@ -449,10 +391,10 @@ export function PricingPage() {
               Cancel immediately
             </button>
           </div>
-        )}
-        {cancelMessage && <p className="ok">{cancelMessage}</p>}
-        {error && <p className="err">{error}</p>}
-      </div>
+        </div>
+      )}
+      {cancelMessage && <p className="ok">{cancelMessage}</p>}
+      {error && <p className="err">{error}</p>}
     </div>
   );
 }
