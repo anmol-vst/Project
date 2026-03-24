@@ -33,6 +33,10 @@ export const requireAuth = async (
     throw new Error("Invalid token");
     }
 
+    if (!decoded.userId || typeof decoded.userId !== "string") {
+      throw new Error("Invalid token payload");
+    }
+
     req.userId = decoded.userId;
     req.userRole = decoded.role;
 

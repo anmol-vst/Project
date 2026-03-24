@@ -67,16 +67,34 @@ export function HomePage() {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginAs, setLoginAs] = useState<"subscriber" | "admin">("subscriber");
   const [error, setError] = useState("");
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     try {
-      await login(email, password);
+      const loggedInUser = await login(email, password);
+      if (loginAs === "admin") {
+        if (loggedInUser.role !== "admin") {
+          logout();
+          setError("This account is not an admin. Please use Subscriber login.");
+          return;
+        }
+        navigate("/admin");
+        return;
+      }
+      if (loggedInUser.role === "admin") {
+        navigate("/admin");
+        return;
+      }
+      if (loggedInUser.subscription?.status !== "active") {
+        navigate("/pricing");
+        return;
+      }
       navigate("/dashboard");
     } catch (err) {
       setError((err as Error).message);
@@ -87,6 +105,22 @@ export function LoginPage() {
     <div className="container narrow">
       <h2>Login</h2>
       <form className="card form" onSubmit={onSubmit}>
+        <div className="row">
+          <button
+            type="button"
+            className={loginAs === "subscriber" ? "btn" : "btn ghost"}
+            onClick={() => setLoginAs("subscriber")}
+          >
+            Subscriber login
+          </button>
+          <button
+            type="button"
+            className={loginAs === "admin" ? "btn" : "btn ghost"}
+            onClick={() => setLoginAs("admin")}
+          >
+            Admin login
+          </button>
+        </div>
         <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input
           placeholder="Password"
@@ -117,7 +151,7 @@ export function SignupPage() {
     setError("");
     try {
       await signup(name, email, password);
-      navigate("/dashboard");
+      navigate("/pricing");
     } catch (err) {
       setError((err as Error).message);
     }
@@ -328,7 +362,7 @@ export function PricingPage() {
             {processingPlan === "yearly" ? "Redirecting..." : "Yearly"}
           </button>
         </div>
-        {user && (
+        {user?.subscription?.status === "active" && (
           <div className="row">
             <button className="btn ghost" disabled={cancelling} onClick={() => cancelSubscription("period_end")}>
               Cancel at period end

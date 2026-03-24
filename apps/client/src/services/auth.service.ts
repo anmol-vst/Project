@@ -6,7 +6,7 @@ export const authService = {
     http<{ token: string; user: AppUser }>("/auth/signup", { method: "POST", json: input }),
   login: (input: { email: string; password: string }) =>
     http<{ token: string; user: AppUser }>("/auth/login", { method: "POST", json: input }),
-  me: () => http<AppUser>("/auth/me"),
+  me: () => http<AppUser>("/users/me/profile"),
   changePassword: (input: { currentPassword: string; newPassword: string; confirmPassword: string }) =>
     http<{ message: string }>("/auth/change-password", { method: "PATCH", json: input }),
 };
