@@ -25,6 +25,69 @@ const getPriceId = (plan: "monthly" | "yearly") => {
   return priceId;
 };
 
+export type PublicPlanPrice = {
+  plan: "monthly" | "yearly";
+  priceId: string;
+  amountCents: number | null;
+  currency: string;
+  interval: string | null;
+  formatted: string;
+  nickname?: string | null;
+};
+
+const formatMoney = (amountCents: number | null, currency: string): string => {
+  if (amountCents == null) return "—";
+  const code = (currency || "usd").toUpperCase();
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: code,
+  }).format(amountCents / 100);
+};
+
+export const getPublicSubscriptionPrices = async (): Promise<{
+  monthly: PublicPlanPrice;
+  yearly: PublicPlanPrice;
+  identicalPriceIds: boolean;
+}> => {
+  const stripe = getStripe();
+  const monthlyId = getPriceId("monthly");
+  const yearlyId = getPriceId("yearly");
+  const identicalPriceIds = monthlyId === yearlyId;
+
+  const [monthlyPrice, yearlyPrice] = await Promise.all([
+    stripe.prices.retrieve(monthlyId),
+    stripe.prices.retrieve(yearlyId),
+  ]);
+
+  const toPlan = (
+    plan: "monthly" | "yearly",
+    p: Stripe.Price,
+    priceId: string
+  ): PublicPlanPrice => {
+    const interval = p.recurring?.interval ?? null;
+    const amountCents = typeof p.unit_amount === "number" ? p.unit_amount : null;
+    const currency = p.currency || "usd";
+    let formatted = formatMoney(amountCents, currency);
+    if (interval === "month") formatted += " / month";
+    if (interval === "year") formatted += " / year";
+    return {
+      plan,
+      priceId,
+      amountCents,
+      currency,
+      interval,
+      formatted,
+      nickname: typeof p.nickname === "string" ? p.nickname : null,
+    };
+  };
+
+  return {
+    monthly: toPlan("monthly", monthlyPrice, monthlyId),
+    yearly: toPlan("yearly", yearlyPrice, yearlyId),
+    identicalPriceIds,
+  };
+};
+
 // ─── createCheckoutSession ────────────────────────────────────────────────────
 
 export const createCheckoutSession = async (

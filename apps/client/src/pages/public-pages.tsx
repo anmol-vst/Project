@@ -6,6 +6,7 @@ import { subscriptionService } from "../services/subscription.service";
 import type { Charity, SubscriptionPlan } from "../types/models";
 
 export function HomePage() {
+  const { user } = useAuth();
   const [featured, setFeatured] = useState<Charity[]>([]);
 
   useEffect(() => {
@@ -15,50 +16,61 @@ export function HomePage() {
       .catch(() => undefined);
   }, []);
 
+  const scoreTarget = user ? "/dashboard" : "/signup";
+  const drawTarget = user ? "/dashboard" : "/pricing";
   return (
     <div className="container">
-      <section className="hero">
-        <h1>Play Better. Win Monthly. Give Back.</h1>
-        <p>
-          Emotion-led golf subscription platform combining score tracking, monthly rewards, and
-          transparent charity impact.
+      <section className="hero hero-golf">
+        <p className="hero-eyebrow">Golf subscription - purpose over par</p>
+        <h1>Play with purpose. Compete monthly. Lift communities.</h1>
+        <p className="hero-lead">
+          Stableford scorekeeping, monthly draw excitement, and transparent charity impact in one
+          modern experience.
         </p>
-        <div className="row">
-          <Link className="btn" to="/signup">
-            Create account
-          </Link>
-          <Link className="btn" to="/pricing">
-            Subscribe
-          </Link>
-          <Link className="btn ghost" to="/charities">
-            Explore Charities
-          </Link>
+        <div className="row hero-actions">
+          <Link className="btn btn-primary" to="/signup">Join the tee sheet</Link>
+          <Link className="btn btn-secondary" to="/pricing">See membership</Link>
+          <Link className="btn ghost btn-outline" to="/charities">Browse charities</Link>
         </div>
       </section>
-      <section className="grid3">
-        <article className="card">
-          <h3>Score Journey</h3>
-          <p>Submit Stableford scores (1-45). Latest 5 are retained automatically.</p>
+      <section className="home-features">
+        <article className="feature-card feature-card--scores">
+          <span className="feature-kicker">01 · Score journey</span>
+          <h3>Your latest five rounds, always current</h3>
+          <p>Record Stableford scores (1-45) with date played. Oldest score rotates out automatically after five.</p>
+          <Link className="feature-link" to={scoreTarget}>{user ? "Open score log" : "Start scoring"}</Link>
         </article>
-        <article className="card">
-          <h3>Monthly Draw Engine</h3>
-          <p>Random or algorithmic draws with 5-match jackpot rollover logic.</p>
+        <article className="feature-card feature-card--draw">
+          <span className="feature-kicker">02 · Monthly draw</span>
+          <h3>Prize tiers with jackpot rollover</h3>
+          <p>Monthly draw workflows support random/algorithmic logic and rollover when no top-tier winner appears.</p>
+          <Link className="feature-link" to={drawTarget}>{user ? "Go to dashboard" : "Unlock draws with membership"}</Link>
         </article>
-        <article className="card">
-          <h3>Charity-First Impact</h3>
-          <p>Choose a charity and route minimum 10% contribution from your plan.</p>
+        <article className="feature-card feature-card--charity">
+          <span className="feature-kicker">03 · Charity-first impact</span>
+          <h3>Giving built into the plan</h3>
+          <p>Select a partner charity and route at least 10% of your subscription to social impact.</p>
+          <Link className="feature-link" to="/charities">Meet charities</Link>
         </article>
       </section>
-      <section className="card">
-        <h3>Spotlight Charity</h3>
+      <section className="card spotlight-card">
+        <div className="spotlight-header">
+          <h3>Spotlight charities</h3>
+          <Link className="text-link" to="/charities">Full directory</Link>
+        </div>
         {featured.length === 0 ? (
           <p className="muted">No featured charity yet.</p>
         ) : (
-          featured.map((item) => (
-            <p key={item._id}>
-              <strong>{item.name}</strong>: {item.shortDescription}
-            </p>
-          ))
+          <ul className="spotlight-list">
+            {featured.map((item) => (
+              <li key={item._id}>
+                <Link to={`/charities/${item.slug}`} className="spotlight-link">
+                  <strong>{item.name}</strong>
+                  <span className="muted">{item.shortDescription}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
@@ -263,6 +275,9 @@ export function PricingPage() {
   const [cancelMessage, setCancelMessage] = useState("");
   const [error, setError] = useState("");
   const [loadingCharities, setLoadingCharities] = useState(true);
+  const [pricesLoading, setPricesLoading] = useState(true);
+  const [pricesError, setPricesError] = useState("");
+  const [pricePayload, setPricePayload] = useState<Awaited<ReturnType<typeof subscriptionService.getPublicPrices>> | null>(null);
   const [processingPlan, setProcessingPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -281,6 +296,27 @@ export function PricingPage() {
       })
       .finally(() => setLoadingCharities(false));
   }, []);
+
+  useEffect(() => {
+    setPricesLoading(true);
+    setPricesError("");
+    subscriptionService
+      .getPublicPrices()
+      .then(setPricePayload)
+      .catch((err) => setPricesError((err as Error).message))
+      .finally(() => setPricesLoading(false));
+  }, []);
+
+  const yearlyVsMonthlyPct =
+    pricePayload?.monthly.amountCents &&
+    pricePayload?.yearly.amountCents &&
+    pricePayload.monthly.interval === "month" &&
+    pricePayload.yearly.interval === "year"
+      ? Math.max(
+          0,
+          Math.round((1 - pricePayload.yearly.amountCents / (12 * pricePayload.monthly.amountCents)) * 100)
+        )
+      : null;
 
   const checkout = async (plan: SubscriptionPlan) => {
     if (!user) return;
@@ -320,13 +356,55 @@ export function PricingPage() {
   };
 
   return (
-    <div className="container">
-      <h2>Subscription Plans</h2>
-      {!user && <p>Login first to subscribe.</p>}
-      <div className="card form">
-        <p className="muted">
-          Pick a charity and contribution (minimum 10%), then choose monthly or yearly billing.
+    <div className="container pricing-page">
+      <header className="pricing-header">
+        <p className="hero-eyebrow">Membership</p>
+        <h2>Stripe-backed pricing</h2>
+        <p className="muted pricing-sub">
+          Amounts below come from Stripe Price objects. Charity percentage is donation share, not the subscription amount.
         </p>
+        {!user && <p className="pricing-note">Login first to continue to Stripe checkout.</p>}
+      </header>
+      {pricePayload?.identicalPriceIds && (
+        <p className="err pricing-banner">
+          `STRIPE_PRICE_MONTHLY` and `STRIPE_PRICE_YEARLY` are set to the same value. Configure two different Stripe prices.
+        </p>
+      )}
+      {pricesLoading && <p className="muted">Loading live prices from Stripe...</p>}
+      {pricesError && <p className="err">{pricesError}</p>}
+      {pricePayload && !pricesLoading && (
+        <div className="pricing-grid">
+          <article className="plan-card">
+            <h3 className="plan-title">Monthly</h3>
+            <p className="plan-price">{pricePayload.monthly.formatted}</p>
+            <p className="muted plan-meta">{pricePayload.monthly.nickname || "Billed every month"}</p>
+            <button
+              className="btn btn-primary plan-cta"
+              disabled={!user || processingPlan !== null || !charityId || loadingCharities || !!pricesError}
+              onClick={() => checkout("monthly")}
+            >
+              {processingPlan === "monthly" ? "Redirecting..." : "Choose monthly"}
+            </button>
+          </article>
+          <article className="plan-card plan-card--featured">
+            <span className="plan-badge">Best value</span>
+            <h3 className="plan-title">Yearly</h3>
+            <p className="plan-price">{pricePayload.yearly.formatted}</p>
+            <p className="muted plan-meta">{pricePayload.yearly.nickname || "Billed once per year"}</p>
+            {yearlyVsMonthlyPct != null && yearlyVsMonthlyPct > 0 ? (
+              <p className="plan-save">About {yearlyVsMonthlyPct}% less than 12x monthly</p>
+            ) : null}
+            <button
+              className="btn btn-secondary plan-cta"
+              disabled={!user || processingPlan !== null || !charityId || loadingCharities || !!pricesError}
+              onClick={() => checkout("yearly")}
+            >
+              {processingPlan === "yearly" ? "Redirecting..." : "Choose yearly"}
+            </button>
+          </article>
+        </div>
+      )}
+      <div className="card form pricing-extras">
         <select value={charityId} onChange={(e) => setCharityId(e.target.value)}>
           <option value="">Select charity</option>
           {charities.map((c) => (
