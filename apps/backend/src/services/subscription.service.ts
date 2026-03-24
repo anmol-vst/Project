@@ -72,7 +72,7 @@ export const cancelSubscription = async (
   if (!user) throw new Error("User not found");
 
   const subId = user.subscription?.stripeSubscriptionId;
-  if (!subId) throw new Error("No active subscription found");
+  if (!subId) throw new Error("No active Stripe subscription found. If your subscription was activated manually, cancellation must be done by an admin.");
 
   if (data.cancelAt === "immediately") {
     await stripe.subscriptions.cancel(subId);
