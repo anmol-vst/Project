@@ -68,7 +68,7 @@ const ScoreSchema = new Schema<IScore>(
 
 const SubscriptionSchema = new Schema<ISubscription>(
   {
-    plan: { type: String, enum: Object.values(SubscriptionPlan), required: true },
+    plan: { type: String, enum: Object.values(SubscriptionPlan), required: true, default: SubscriptionPlan.Monthly },
     status: { type: String, enum: Object.values(SubscriptionStatus), default: SubscriptionStatus.Inactive },
     stripeCustomerId: { type: String, default: null },
     stripeSubscriptionId: { type: String, default: null },
@@ -109,7 +109,10 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: Object.values(UserRole), default: UserRole.User },
     avatarUrl: { type: String, default: null },
-    subscription: { type: SubscriptionSchema, default: () => ({ status: SubscriptionStatus.Inactive }) },
+    subscription: {
+      type: SubscriptionSchema,
+      default: () => ({ plan: SubscriptionPlan.Monthly, status: SubscriptionStatus.Inactive }),
+    },
     scores: { type: [ScoreSchema], default: [] },
     charityContribution: { type: CharityContributionSchema, default: null },
     drawsEntered: { type: [{ type: Schema.Types.ObjectId, ref: "Draw" }], default: [] },
