@@ -126,14 +126,24 @@ export const applyPaidSubscriptionFromCheckoutSession = async (
     throw new Error("No subscription on checkout session yet");
   }
 
-  const stripeSubscription = (await stripe.subscriptions.retrieve(subId)) as {
-    items: { data: Array<{ price?: { recurring?: { interval?: string } } }> };
-    current_period_start: number;
-    current_period_end: number;
+  type RetrievedSub = {
+    items?: { data?: Array<{ price?: { recurring?: { interval?: string } } }> };
+    current_period_start?: number;
+    current_period_end?: number;
   };
 
-  const item = stripeSubscription.items.data[0];
+  const stripeSubscription = (await stripe.subscriptions.retrieve(
+    subId
+  )) as unknown as RetrievedSub;
+
+  const item = stripeSubscription.items?.data?.[0];
   if (!item) throw new Error("No subscription items found");
+
+  const periodStart = stripeSubscription.current_period_start;
+  const periodEnd = stripeSubscription.current_period_end;
+  if (typeof periodStart !== "number" || typeof periodEnd !== "number") {
+    throw new Error("Invalid subscription period from Stripe");
+  }
 
   const update: Record<string, unknown> = {
     "subscription.stripeCustomerId": session.customer,
@@ -141,12 +151,8 @@ export const applyPaidSubscriptionFromCheckoutSession = async (
     "subscription.status": SubscriptionStatus.Active,
     "subscription.plan":
       item.price?.recurring?.interval === "year" ? "yearly" : "monthly",
-    "subscription.currentPeriodStart": new Date(
-      stripeSubscription.current_period_start * 1000
-    ),
-    "subscription.currentPeriodEnd": new Date(
-      stripeSubscription.current_period_end * 1000
-    ),
+    "subscription.currentPeriodStart": new Date(periodStart * 1000),
+    "subscription.currentPeriodEnd": new Date(periodEnd * 1000),
   };
 
   if (charityId && /^[a-f\d]{24}$/i.test(charityId)) {
