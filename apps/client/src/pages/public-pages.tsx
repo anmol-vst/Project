@@ -18,33 +18,37 @@ export function HomePage() {
   return (
     <div className="container">
       <section className="hero">
-        <h1>Play Better. Win Monthly. Give Back.</h1>
-        <p>
-          Emotion-led golf subscription platform combining score tracking, monthly rewards, and
-          transparent charity impact.
-        </p>
-        <div className="row">
-          <Link className="btn" to="/signup">
-            Create account
-          </Link>
-          <Link className="btn" to="/pricing">
-            Subscribe
-          </Link>
-          <Link className="btn ghost" to="/charities">
-            Explore Charities
-          </Link>
+        <div className="hero-content">
+          <h1>Play Better. Win Monthly. Give Back.</h1>
+          <p>
+            Emotion-led golf subscription platform combining score tracking, monthly rewards, and
+            transparent charity impact.
+          </p>
+          <div className="row">
+            <Link className="btn" to="/signup">Create account</Link>
+            <Link className="btn" to="/pricing">Subscribe</Link>
+            <Link className="btn ghost" to="/charities">Explore Charities</Link>
+          </div>
         </div>
+        <img
+          src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&h=400&fit=crop"
+          alt="Golf at sunset"
+          className="hero-img"
+        />
       </section>
       <section className="grid3">
         <article className="card">
+          <img src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=200&fit=crop" alt="Golf score" className="card-img" />
           <h3>Score Journey</h3>
           <p>Submit Stableford scores (1-45). Latest 5 are retained automatically.</p>
         </article>
         <article className="card">
+          <img src="https://images.unsplash.com/photo-1592919505780-303950717480?w=400&h=200&fit=crop" alt="Prize draw" className="card-img" />
           <h3>Monthly Draw Engine</h3>
           <p>Random or algorithmic draws with 5-match jackpot rollover logic.</p>
         </article>
         <article className="card">
+          <img src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400&h=200&fit=crop" alt="Charity giving" className="card-img" />
           <h3>Charity-First Impact</h3>
           <p>Choose a charity and route minimum 10% contribution from your plan.</p>
         </article>
@@ -257,45 +261,33 @@ export function CharityProfilePage() {
 
 export function PricingPage() {
   const { user } = useAuth();
-  const [charities, setCharities] = useState<Charity[]>([]);
   const [charityId, setCharityId] = useState("");
-  const [contributionPercent, setContributionPercent] = useState(10);
   const [cancelMessage, setCancelMessage] = useState("");
   const [error, setError] = useState("");
-  const [loadingCharities, setLoadingCharities] = useState(true);
   const [processingPlan, setProcessingPlan] = useState<SubscriptionPlan | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    setLoadingCharities(true);
     charityService
       .list({ page: 1, limit: 30 })
       .then((res) => {
-        setCharities(res.charities);
         if (res.charities.length > 0) {
           setCharityId(res.charities[0]?._id || "");
         }
       })
-      .catch((err) => {
-        setError((err as Error).message || "Unable to load charities right now.");
-      })
-      .finally(() => setLoadingCharities(false));
+      .catch(() => undefined);
   }, []);
 
   const checkout = async (plan: SubscriptionPlan) => {
     if (!user) return;
-    if (!charityId) {
-      setError("Please select a charity before continuing to payment.");
-      return;
-    }
     setError("");
     setCancelMessage("");
     setProcessingPlan(plan);
     try {
       const res = await subscriptionService.checkout({
         plan,
-        charityId,
-        contributionPercent: Math.max(10, contributionPercent),
+        charityId: charityId || undefined,
+        contributionPercent: 10,
       });
       window.location.href = res.url;
     } catch (err) {
@@ -321,48 +313,58 @@ export function PricingPage() {
 
   return (
     <div className="container">
-      <h2>Subscription Plans</h2>
-      {!user && <p>Login first to subscribe.</p>}
-      <div className="card form">
-        <p className="muted">
-          Pick a charity and contribution (minimum 10%), then choose monthly or yearly billing.
+      <p className="muted" style={{ textTransform: "uppercase", letterSpacing: "2px", fontSize: "0.8rem" }}>Membership</p>
+      <h2 style={{ fontSize: "2.5rem", marginTop: "0.2rem" }}>Stripe-backed pricing</h2>
+      <p className="muted">Choose your plan and start playing, winning, and giving back.</p>
+      {!user && (
+        <p>
+          <Link to="/login">Login</Link> or <Link to="/signup">Sign up</Link> first to subscribe.
         </p>
-        <select value={charityId} onChange={(e) => setCharityId(e.target.value)}>
-          <option value="">Select charity</option>
-          {charities.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {loadingCharities && <p className="muted">Loading charities...</p>}
-        {!loadingCharities && charities.length === 0 && (
-          <p className="err">No active charities available yet. Ask admin to add one first.</p>
-        )}
-        <input
-          type="number"
-          min={10}
-          max={100}
-          value={contributionPercent}
-          onChange={(e) => setContributionPercent(Number(e.target.value))}
-        />
-        <div className="row">
+      )}
+
+      <div className="pricing-grid">
+        <article className="card pricing-card">
+          <h3>Monthly</h3>
+          <p className="price">Monthly billing</p>
+          <p className="muted">Billed every month</p>
+          <img
+            src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=200&fit=crop"
+            alt="Golf course"
+            className="pricing-img"
+          />
           <button
-            className="btn"
-            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            className="btn pricing-btn"
+            disabled={!user || processingPlan !== null}
             onClick={() => checkout("monthly")}
           >
-            {processingPlan === "monthly" ? "Redirecting..." : "Monthly"}
+            {processingPlan === "monthly" ? "Redirecting to Stripe..." : "Choose monthly"}
           </button>
+        </article>
+
+        <article className="card pricing-card pricing-featured">
+          <span className="badge">BEST VALUE</span>
+          <h3>Yearly</h3>
+          <p className="price">Annual billing</p>
+          <p className="muted">Billed once per year</p>
+          <p style={{ fontWeight: 700 }}>Save with annual billing</p>
+          <img
+            src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=400&h=200&fit=crop"
+            alt="Golf sunset"
+            className="pricing-img"
+          />
           <button
-            className="btn ghost"
-            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            className="btn ghost pricing-btn"
+            disabled={!user || processingPlan !== null}
             onClick={() => checkout("yearly")}
           >
-            {processingPlan === "yearly" ? "Redirecting..." : "Yearly"}
+            {processingPlan === "yearly" ? "Redirecting to Stripe..." : "Choose yearly"}
           </button>
-        </div>
-        {user?.subscription?.status === "active" && (
+        </article>
+      </div>
+
+      {user?.subscription?.status === "active" && (
+        <div className="card" style={{ marginTop: "1rem" }}>
+          <p className="muted">Manage your subscription</p>
           <div className="row">
             <button className="btn ghost" disabled={cancelling} onClick={() => cancelSubscription("period_end")}>
               Cancel at period end
@@ -371,10 +373,10 @@ export function PricingPage() {
               Cancel immediately
             </button>
           </div>
-        )}
-        {cancelMessage && <p className="ok">{cancelMessage}</p>}
-        {error && <p className="err">{error}</p>}
-      </div>
+        </div>
+      )}
+      {cancelMessage && <p className="ok">{cancelMessage}</p>}
+      {error && <p className="err">{error}</p>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { NavBar } from "./components/nav-bar";
+import { CursorBall } from "./components/cursor-ball";
 import { AppRoutes } from "./routes/app-routes";
 
 export function App() {
@@ -6,6 +7,7 @@ export function App() {
     <div>
       <NavBar />
       <AppRoutes />
+      <CursorBall />
     </div>
   );
 }
