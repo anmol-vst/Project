@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../state/auth";
 import { authService } from "../services/auth.service";
@@ -23,18 +23,67 @@ export function UserDashboardPage() {
 
   const active = user?.subscription?.status === "active";
 
-  const loadData = async () => {
-    const [sc, wn] = await Promise.all([
-      active ? scoreService.list() : Promise.resolve([]),
-      winnerService.myWinnings(),
-    ]);
-    setScores(sc);
-    setWinnings(wn);
-  };
+  const loadData = useCallback(async () => {
+    try {
+      const me = await refreshMe();
+      const isActive = me?.subscription?.status === "active";
+      const [sc, wn] = await Promise.all([
+        isActive ? scoreService.list() : Promise.resolve([]),
+        winnerService.myWinnings(),
+      ]);
+      setScores(sc);
+      setWinnings(wn);
+    } catch {
+      try {
+        setScores([]);
+        const wn = await winnerService.myWinnings();
+        setWinnings(wn);
+      } catch {
+        setWinnings([]);
+      }
+    }
+  }, [refreshMe]);
 
   useEffect(() => {
-    refreshMe().then(loadData).catch(() => undefined);
-  }, []);
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("subscribed") !== "true") return;
+
+    let cancelled = false;
+    void (async () => {
+      for (let i = 0; i < 25 && !cancelled; i++) {
+        try {
+          const me = await refreshMe();
+          if (me?.subscription?.status === "active") {
+            const [sc, wn] = await Promise.all([scoreService.list(), winnerService.myWinnings()]);
+            setScores(sc);
+            setWinnings(wn);
+            window.history.replaceState({}, "", "/dashboard");
+            setMessage("Payment confirmed. Score entry is unlocked.");
+            break;
+          }
+        } catch {
+          /* webhook may lag */
+        }
+        await new Promise((r) => setTimeout(r, 700));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshMe]);
+
+  useEffect(() => {
+    if (user?.subscription?.status !== "active") {
+      setScores([]);
+      return;
+    }
+    scoreService.list().then(setScores).catch(() => undefined);
+  }, [user?.subscription?.status]);
 
   useEffect(() => {
     setProfileName(user?.name || "");

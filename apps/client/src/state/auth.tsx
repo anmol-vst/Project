@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { authService } from "../services/auth.service";
 import { setHttpToken } from "../services/http";
 import type { AppUser } from "../types/models";
@@ -10,7 +10,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<AppUser>;
   signup: (name: string, email: string, password: string) => Promise<AppUser>;
   logout: () => void;
-  refreshMe: () => Promise<void>;
+  refreshMe: () => Promise<AppUser>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,10 +21,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const refreshMe = async () => {
+  const refreshMe = useCallback(async () => {
     const me = await authService.me();
     setUser(me);
-  };
+    return me;
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({ user, token, loading, login, signup, logout, refreshMe }),
-    [user, token, loading]
+    [user, token, loading, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
