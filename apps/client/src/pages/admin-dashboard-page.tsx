@@ -26,6 +26,7 @@ export function AdminDashboardPage() {
     category: "community",
     isFeatured: false,
   });
+  const [charityError, setCharityError] = useState("");
   const [charities, setCharities] = useState<Array<{ _id: string; name: string; shortDescription: string }>>([]);
 
   const load = async () => {
@@ -33,7 +34,7 @@ export function AdminDashboardPage() {
       userService.all(),
       drawService.list(),
       winnerService.all(),
-      charityService.list({ page: 1, limit: 100 }),
+      charityService.list({ page: 1, limit: 50 }),
     ]);
     setUsers(u.users);
     setDraws(d);
@@ -214,12 +215,12 @@ export function AdminDashboardPage() {
             onChange={(e) => setCharityForm((p) => ({ ...p, name: e.target.value }))}
           />
           <input
-            placeholder="Short description"
+            placeholder="Short description (min 10 characters)"
             value={charityForm.shortDescription}
             onChange={(e) => setCharityForm((p) => ({ ...p, shortDescription: e.target.value }))}
           />
           <textarea
-            placeholder="Description"
+            placeholder="Description (min 20 characters)"
             value={charityForm.description}
             onChange={(e) => setCharityForm((p) => ({ ...p, description: e.target.value }))}
           />
@@ -239,18 +240,25 @@ export function AdminDashboardPage() {
           <button
             className="btn"
             onClick={async () => {
-              await charityService.create(charityForm);
-              setCharityForm({
-                name: "",
-                description: "",
-                shortDescription: "",
-                category: "community",
-                isFeatured: false,
-              });
+              setCharityError("");
+              try {
+                await charityService.create(charityForm);
+                setCharityForm({
+                  name: "",
+                  description: "",
+                  shortDescription: "",
+                  category: "community",
+                  isFeatured: false,
+                });
+                await load();
+              } catch (err) {
+                setCharityError((err as Error).message);
+              }
             }}
           >
             Create charity
           </button>
+          {charityError && <p className="err">{charityError}</p>}
         </div>
         {charities.map((charity) => (
           <article key={charity._id} className="winner">
