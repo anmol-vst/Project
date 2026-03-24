@@ -7,8 +7,8 @@ type AuthContextType = {
   user: AppUser | null;
   token: string;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AppUser>;
+  signup: (name: string, email: string, password: string) => Promise<AppUser>;
   logout: () => void;
   refreshMe: () => Promise<void>;
 };
@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(data.token);
     setHttpToken(data.token);
     setUser(data.user);
+    return data.user;
   };
 
   const signup = async (name: string, email: string, password: string) => {
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(data.token);
     setHttpToken(data.token);
     setUser(data.user);
+    return data.user;
   };
 
   const logout = () => {
