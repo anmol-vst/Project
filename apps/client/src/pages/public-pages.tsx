@@ -226,6 +226,7 @@ export function PricingPage() {
   const [charities, setCharities] = useState<Charity[]>([]);
   const [charityId, setCharityId] = useState("");
   const [contributionPercent, setContributionPercent] = useState(10);
+  const [cancelMessage, setCancelMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
