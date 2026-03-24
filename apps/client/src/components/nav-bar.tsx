@@ -6,7 +6,10 @@ export function NavBar() {
 
   return (
     <header className="nav">
-      <div className="brand">Golf For Good</div>
+      <Link to="/" className="brand-link">
+        <div className="brand-mark" aria-hidden />
+        <div className="brand">Fairway &amp; Foundation</div>
+      </Link>
       <nav>
         <Link to="/">Home</Link>
         <Link to="/charities">Charities</Link>
@@ -21,7 +24,9 @@ export function NavBar() {
             </Link>
           </>
         ) : (
-          <button onClick={logout}>Logout</button>
+          <button className="btn ghost nav-logout" type="button" onClick={logout}>
+            Logout
+          </button>
         )}
       </nav>
     </header>

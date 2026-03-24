@@ -7,6 +7,8 @@ import { createCheckoutSchema, cancelSubscriptionSchema } from "../zodValidation
 
 const router: Router = Router();
 
+router.get("/prices", SubscriptionController.getPublicPrices);
+
 // User
 router.post("/checkout", requireAuth, validateBody(createCheckoutSchema), SubscriptionController.createCheckout);
 router.post("/cancel", requireAuth, validateBody(cancelSubscriptionSchema), SubscriptionController.cancelSubscription);

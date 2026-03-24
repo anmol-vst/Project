@@ -4,9 +4,11 @@ import { AppRoutes } from "./routes/app-routes";
 
 export function App() {
   return (
-    <div>
+    <div className="app-root">
       <NavBar />
-      <AppRoutes />
+      <main className="main-content">
+        <AppRoutes />
+      </main>
       <CursorBall />
     </div>
   );

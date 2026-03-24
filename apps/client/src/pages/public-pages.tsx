@@ -6,6 +6,7 @@ import { subscriptionService } from "../services/subscription.service";
 import type { Charity, SubscriptionPlan } from "../types/models";
 
 export function HomePage() {
+  const { user } = useAuth();
   const [featured, setFeatured] = useState<Charity[]>([]);
 
   useEffect(() => {
@@ -15,19 +16,22 @@ export function HomePage() {
       .catch(() => undefined);
   }, []);
 
+  const scoreTarget = user ? "/dashboard" : "/signup";
+  const drawTarget = user ? "/dashboard" : "/pricing";
   return (
     <div className="container">
-      <section className="hero">
+      <section className="hero hero-golf">
         <div className="hero-content">
-          <h1>Play Better. Win Monthly. Give Back.</h1>
-          <p>
-            Emotion-led golf subscription platform combining score tracking, monthly rewards, and
-            transparent charity impact.
+          <p className="hero-eyebrow">Golf subscription - purpose over par</p>
+          <h1>Play with purpose. Compete monthly. Lift communities.</h1>
+          <p className="hero-lead">
+            Stableford scorekeeping, monthly draw excitement, and transparent charity impact in one
+            modern experience.
           </p>
-          <div className="row">
-            <Link className="btn" to="/signup">Create account</Link>
-            <Link className="btn" to="/pricing">Subscribe</Link>
-            <Link className="btn ghost" to="/charities">Explore Charities</Link>
+          <div className="row hero-actions">
+            <Link className="btn btn-primary" to="/signup">Join the tee sheet</Link>
+            <Link className="btn btn-secondary" to="/pricing">See membership</Link>
+            <Link className="btn ghost btn-outline" to="/charities">Browse charities</Link>
           </div>
         </div>
         <img
@@ -36,33 +40,47 @@ export function HomePage() {
           className="hero-img"
         />
       </section>
-      <section className="grid3">
-        <article className="card">
+      <section className="home-features">
+        <article className="feature-card feature-card--scores">
           <img src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=200&fit=crop" alt="Golf score" className="card-img" />
-          <h3>Score Journey</h3>
-          <p>Submit Stableford scores (1-45). Latest 5 are retained automatically.</p>
+          <span className="feature-kicker">01 · Score journey</span>
+          <h3>Your latest five rounds, always current</h3>
+          <p>Record Stableford scores (1-45) with date played. Oldest score rotates out automatically after five.</p>
+          <Link className="feature-link" to={scoreTarget}>{user ? "Open score log" : "Start scoring"}</Link>
         </article>
-        <article className="card">
+        <article className="feature-card feature-card--draw">
           <img src="https://images.unsplash.com/photo-1592919505780-303950717480?w=400&h=200&fit=crop" alt="Prize draw" className="card-img" />
-          <h3>Monthly Draw Engine</h3>
-          <p>Random or algorithmic draws with 5-match jackpot rollover logic.</p>
+          <span className="feature-kicker">02 · Monthly draw</span>
+          <h3>Prize tiers with jackpot rollover</h3>
+          <p>Monthly draw workflows support random/algorithmic logic and rollover when no top-tier winner appears.</p>
+          <Link className="feature-link" to={drawTarget}>{user ? "Go to dashboard" : "Unlock draws with membership"}</Link>
         </article>
-        <article className="card">
+        <article className="feature-card feature-card--charity">
           <img src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400&h=200&fit=crop" alt="Charity giving" className="card-img" />
-          <h3>Charity-First Impact</h3>
-          <p>Choose a charity and route minimum 10% contribution from your plan.</p>
+          <span className="feature-kicker">03 · Charity-first impact</span>
+          <h3>Giving built into the plan</h3>
+          <p>Select a partner charity and route at least 10% of your subscription to social impact.</p>
+          <Link className="feature-link" to="/charities">Meet charities</Link>
         </article>
       </section>
-      <section className="card">
-        <h3>Spotlight Charity</h3>
+      <section className="card spotlight-card">
+        <div className="spotlight-header">
+          <h3>Spotlight charities</h3>
+          <Link className="text-link" to="/charities">Full directory</Link>
+        </div>
         {featured.length === 0 ? (
           <p className="muted">No featured charity yet.</p>
         ) : (
-          featured.map((item) => (
-            <p key={item._id}>
-              <strong>{item.name}</strong>: {item.shortDescription}
-            </p>
-          ))
+          <ul className="spotlight-list">
+            {featured.map((item) => (
+              <li key={item._id}>
+                <Link to={`/charities/${item.slug}`} className="spotlight-link">
+                  <strong>{item.name}</strong>
+                  <span className="muted">{item.shortDescription}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
