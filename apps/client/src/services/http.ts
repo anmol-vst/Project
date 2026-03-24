@@ -35,9 +35,27 @@ export async function http<T>(
     body: options.json !== undefined ? JSON.stringify(options.json) : undefined,
   });
 
-  const payload = (await response.json()) as ApiEnvelope<T>;
-  if (!response.ok || !payload.success) {
-    throw new Error(payload.message || "Request failed");
+  const text = await response.text();
+  let payload: ApiEnvelope<T> | null = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text) as ApiEnvelope<T>;
+    } catch {
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status}). Backend returned non-JSON response.`);
+      }
+      throw new Error("Received invalid server response.");
+    }
+  }
+
+  if (!response.ok || !payload?.success) {
+    const maybePayload = payload as (ApiEnvelope<T> & { errors?: Array<{ field: string; message: string }> }) | null;
+    const fieldErrors = maybePayload?.errors ?? [];
+    const details = fieldErrors
+      .map((item) => `${item.field}: ${item.message}`)
+      .join(", ");
+    throw new Error(maybePayload?.message || details || "Request failed");
   }
   return payload.data as T;
 }

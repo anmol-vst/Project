@@ -4,6 +4,7 @@ import process from "node:process";
 import { resolve, dirname } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
@@ -17,6 +18,10 @@ import cors from "cors";
 const app: Express = express();
 const PORT = Number(process.env.PORT) || 3000;
 app.use(cors());
+
+// Load .env from common backend locations before reading process.env.
+dotenv.config({ path: resolve(process.cwd(), ".env"), override: false });
+dotenv.config({ path: resolve(process.cwd(), "apps/backend/.env"), override: false });
 
 const decodeEnvBuffer = (buffer: Buffer): string => {
   if (buffer.length >= 2) {

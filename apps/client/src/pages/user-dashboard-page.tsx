@@ -19,6 +19,7 @@ export function UserDashboardPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [profileName, setProfileName] = useState("");
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, { points: number; datePlayed: string }>>({});
 
   const active = user?.subscription?.status === "active";
 
@@ -39,6 +40,20 @@ export function UserDashboardPage() {
     setProfileName(user?.name || "");
   }, [user?.name]);
 
+  useEffect(() => {
+    setScoreDrafts(
+      Object.fromEntries(
+        scores.map((s) => [
+          s._id,
+          {
+            points: s.points,
+            datePlayed: new Date(s.datePlayed).toISOString().slice(0, 10),
+          },
+        ])
+      )
+    );
+  }, [scores]);
+
   const addScore = async (e: FormEvent) => {
     e.preventDefault();
     await scoreService.add({ points, datePlayed });
@@ -46,8 +61,10 @@ export function UserDashboardPage() {
     setMessage("Score saved. Latest 5 logic is applied by backend.");
   };
 
-  const updateScore = async (score: Score) => {
-    await scoreService.update(score._id, { points: score.points });
+  const updateScore = async (scoreId: string) => {
+    const draft = scoreDrafts[scoreId];
+    if (!draft) return;
+    await scoreService.update(scoreId, { points: draft.points, datePlayed: draft.datePlayed });
     await loadData();
   };
 
@@ -122,6 +139,7 @@ export function UserDashboardPage() {
 
       <section className="card">
         <h3>Scores (Stableford 1-45)</h3>
+        <p className="muted">Only your latest 5 scores are kept. New score replaces the oldest automatically.</p>
         {!active ? (
           <p>Active subscription required for score features.</p>
         ) : (
@@ -140,10 +158,35 @@ export function UserDashboardPage() {
         <ul>
           {scores.map((s) => (
             <li key={s._id} className="row">
-              <span>
-                {s.points} - {new Date(s.datePlayed).toLocaleDateString()}
-              </span>
-              <button className="btn ghost" onClick={() => updateScore(s)}>
+              <input
+                type="number"
+                min={1}
+                max={45}
+                value={scoreDrafts[s._id]?.points ?? s.points}
+                onChange={(e) =>
+                  setScoreDrafts((prev) => ({
+                    ...prev,
+                    [s._id]: {
+                      points: Number(e.target.value),
+                      datePlayed: prev[s._id]?.datePlayed || new Date(s.datePlayed).toISOString().slice(0, 10),
+                    },
+                  }))
+                }
+              />
+              <input
+                type="date"
+                value={scoreDrafts[s._id]?.datePlayed ?? new Date(s.datePlayed).toISOString().slice(0, 10)}
+                onChange={(e) =>
+                  setScoreDrafts((prev) => ({
+                    ...prev,
+                    [s._id]: {
+                      points: prev[s._id]?.points ?? s.points,
+                      datePlayed: e.target.value,
+                    },
+                  }))
+                }
+              />
+              <button className="btn ghost" onClick={() => updateScore(s._id)}>
                 Save edit
               </button>
               <button className="btn ghost" onClick={() => deleteScore(s._id)}>

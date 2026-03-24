@@ -228,32 +228,60 @@ export function PricingPage() {
   const [contributionPercent, setContributionPercent] = useState(10);
   const [cancelMessage, setCancelMessage] = useState("");
   const [error, setError] = useState("");
+  const [loadingCharities, setLoadingCharities] = useState(true);
+  const [processingPlan, setProcessingPlan] = useState<SubscriptionPlan | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    charityService.list({ page: 1, limit: 30 }).then((res) => setCharities(res.charities));
+    setLoadingCharities(true);
+    charityService
+      .list({ page: 1, limit: 30 })
+      .then((res) => {
+        setCharities(res.charities);
+        if (res.charities.length > 0) {
+          setCharityId(res.charities[0]?._id || "");
+        }
+      })
+      .catch((err) => {
+        setError((err as Error).message || "Unable to load charities right now.");
+      })
+      .finally(() => setLoadingCharities(false));
   }, []);
 
   const checkout = async (plan: SubscriptionPlan) => {
     if (!user) return;
+    if (!charityId) {
+      setError("Please select a charity before continuing to payment.");
+      return;
+    }
     setError("");
+    setCancelMessage("");
+    setProcessingPlan(plan);
     try {
       const res = await subscriptionService.checkout({
         plan,
-        charityId: charityId || undefined,
+        charityId,
         contributionPercent: Math.max(10, contributionPercent),
       });
       window.location.href = res.url;
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setProcessingPlan(null);
     }
   };
 
   const cancelSubscription = async (cancelAt: "immediately" | "period_end") => {
+    setError("");
+    setCancelMessage("");
+    setCancelling(true);
     try {
       const res = await subscriptionService.cancel(cancelAt);
       setCancelMessage(res.message || "Subscription cancellation requested.");
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -262,6 +290,9 @@ export function PricingPage() {
       <h2>Subscription Plans</h2>
       {!user && <p>Login first to subscribe.</p>}
       <div className="card form">
+        <p className="muted">
+          Pick a charity and contribution (minimum 10%), then choose monthly or yearly billing.
+        </p>
         <select value={charityId} onChange={(e) => setCharityId(e.target.value)}>
           <option value="">Select charity</option>
           {charities.map((c) => (
@@ -270,6 +301,10 @@ export function PricingPage() {
             </option>
           ))}
         </select>
+        {loadingCharities && <p className="muted">Loading charities...</p>}
+        {!loadingCharities && charities.length === 0 && (
+          <p className="err">No active charities available yet. Ask admin to add one first.</p>
+        )}
         <input
           type="number"
           min={10}
@@ -278,19 +313,27 @@ export function PricingPage() {
           onChange={(e) => setContributionPercent(Number(e.target.value))}
         />
         <div className="row">
-          <button className="btn" disabled={!user} onClick={() => checkout("monthly")}>
-            Monthly
+          <button
+            className="btn"
+            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            onClick={() => checkout("monthly")}
+          >
+            {processingPlan === "monthly" ? "Redirecting..." : "Monthly"}
           </button>
-          <button className="btn ghost" disabled={!user} onClick={() => checkout("yearly")}>
-            Yearly
+          <button
+            className="btn ghost"
+            disabled={!user || processingPlan !== null || !charityId || loadingCharities}
+            onClick={() => checkout("yearly")}
+          >
+            {processingPlan === "yearly" ? "Redirecting..." : "Yearly"}
           </button>
         </div>
         {user && (
           <div className="row">
-            <button className="btn ghost" onClick={() => cancelSubscription("period_end")}>
+            <button className="btn ghost" disabled={cancelling} onClick={() => cancelSubscription("period_end")}>
               Cancel at period end
             </button>
-            <button className="btn ghost" onClick={() => cancelSubscription("immediately")}>
+            <button className="btn ghost" disabled={cancelling} onClick={() => cancelSubscription("immediately")}>
               Cancel immediately
             </button>
           </div>

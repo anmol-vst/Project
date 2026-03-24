@@ -34,8 +34,7 @@ export const validateQuery =
       return;
     }
 
-    //@ts-ignore
-    req.query = result.data;
+    Object.assign(req.query as Record<string, unknown>, result.data as Record<string, unknown>);
     next();
   };
 
@@ -54,7 +53,6 @@ export const validateParams =
       return;
     }
 
-    //@ts-ignore
-    req.params = result.data;
+    Object.assign(req.params as Record<string, unknown>, result.data as Record<string, unknown>);
     next();
   };
